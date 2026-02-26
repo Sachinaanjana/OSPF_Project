@@ -1,10 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Download, RotateCcw, Radio, Zap, Activity } from "lucide-react"
+import { Download, RotateCcw, Radio, Zap, Activity, Play } from "lucide-react"
 import type { LayoutAlgorithm, LinkType, PollingState, TopologyChange } from "@/lib/ospf-types"
 import { getAreaColor } from "@/lib/layout-engine"
 import { EventLog } from "@/components/event-log"
@@ -34,6 +35,8 @@ interface ControlPanelProps {
   onSetPollingInterval: (ms: number) => void
   onSimulateChange: () => void
   events: TopologyChange[]
+  // Sequential reveal props
+  onSequentialReveal?: (delay: number) => void
 }
 
 export function ControlPanel({
@@ -60,9 +63,48 @@ export function ControlPanel({
   onSetPollingInterval,
   onSimulateChange,
   events,
+  onSequentialReveal,
 }: ControlPanelProps) {
+  const [revealDelay, setRevealDelay] = useState<string>("500")
   return (
     <div className="flex flex-col gap-5 p-4">
+      {/* Sequential Reveal Section */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+          <Play className="w-3.5 h-3.5" />
+          Router Reveal
+        </h3>
+        <div className="flex flex-col gap-3">
+          <div>
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 block">
+              Reveal Delay (ms)
+            </Label>
+            <Select value={revealDelay} onValueChange={setRevealDelay}>
+              <SelectTrigger className="h-7 text-xs bg-secondary/50 border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="200">200ms (Fast)</SelectItem>
+                <SelectItem value="500">500ms (Normal)</SelectItem>
+                <SelectItem value="1000">1s (Slow)</SelectItem>
+                <SelectItem value="1500">1.5s (Very Slow)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full text-xs justify-start gap-2"
+            onClick={() => onSequentialReveal?.(Number(revealDelay))}
+          >
+            <Play className="w-3.5 h-3.5" />
+            Show Routers One by One
+          </Button>
+        </div>
+      </div>
+
+      <div className="h-px bg-border" />
+
       {/* Live Monitor Section */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
