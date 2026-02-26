@@ -48,6 +48,7 @@ export default function Page() {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [filterArea, setFilterArea] = useState<string | null>(null)
   const [filterLinkType, setFilterLinkType] = useState<LinkType | null>(null)
+  const [sequentialRevealDelay, setSequentialRevealDelay] = useState<number | undefined>(undefined)
 
   const [showLeftPanel, setShowLeftPanel] = useState(true)
   const [showRightPanel, setShowRightPanel] = useState(true)
@@ -497,6 +498,7 @@ export default function Page() {
             onSelectEdge={setSelectedEdgeId}
             onZoomChange={setZoom}
             onPanChange={handlePanChange}
+            sequentialRevealDelay={sequentialRevealDelay}
           />
         </div>
 
@@ -558,6 +560,7 @@ export default function Page() {
                   onSetPollingInterval={setPollingInterval}
                   onSimulateChange={handleSimulateChange}
                   events={events}
+                  onSequentialReveal={setSequentialRevealDelay}
                 />
               </ScrollArea>
             </div>

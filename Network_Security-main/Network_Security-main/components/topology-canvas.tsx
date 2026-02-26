@@ -19,6 +19,7 @@ interface TopologyCanvasProps {
   onSelectEdge: (id: string | null) => void
   onZoomChange: (zoom: number) => void
   onPanChange: (x: number, y: number) => void
+  sequentialRevealDelay?: number // Delay in ms between router reveals
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -204,6 +205,7 @@ export function TopologyCanvas({
   onSelectEdge,
   onZoomChange,
   onPanChange,
+  sequentialRevealDelay,
 }: TopologyCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -212,10 +214,35 @@ export function TopologyCanvas({
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   const [dragNodeId, setDragNodeId] = useState<string | null>(null)
   const [localNodes, setLocalNodes] = useState<GraphNode[]>(nodes)
+  const [revealedNodeIds, setRevealedNodeIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setLocalNodes(nodes)
-  }, [nodes])
+    // Reset reveal state when nodes change
+    if (sequentialRevealDelay === undefined) {
+      setRevealedNodeIds(new Set(nodes.map(n => n.id)))
+    }
+  }, [nodes, sequentialRevealDelay])
+
+  // Sequential reveal effect
+  useEffect(() => {
+    if (sequentialRevealDelay === undefined) return
+
+    const routerNodes = localNodes.filter(n => n.type === "router")
+    let currentIndex = 0
+    setRevealedNodeIds(new Set())
+
+    const interval = setInterval(() => {
+      if (currentIndex < routerNodes.length) {
+        setRevealedNodeIds(prev => new Set([...prev, routerNodes[currentIndex].id]))
+        currentIndex++
+      } else {
+        clearInterval(interval)
+      }
+    }, sequentialRevealDelay)
+
+    return () => clearInterval(interval)
+  }, [sequentialRevealDelay, localNodes])
 
   useEffect(() => {
     const container = containerRef.current
@@ -324,11 +351,17 @@ export function TopologyCanvas({
       ctx.fillText(`Area ${area}`, minX + 10, minY + 8)
     }
 
-    // Draw edges (cables)
+    // Draw edges (cables) - only if both nodes are revealed
+    const visibleNodeIds = revealedNodeIds.size > 0 ? revealedNodeIds : new Set(localNodes.map(n => n.id))
     for (const edge of edges) {
       const sourceNode = localNodes.find((n) => n.id === edge.source)
       const targetNode = localNodes.find((n) => n.id === edge.target)
       if (!sourceNode || !targetNode) continue
+      
+      // Skip edges if either endpoint is not revealed
+      if (revealedNodeIds.size > 0 && (!visibleNodeIds.has(edge.source) || !visibleNodeIds.has(edge.target))) {
+        continue
+      }
 
       const isSelected = edge.id === selectedEdgeId
       const edgeColor = getAreaColor(edge.area)
@@ -465,8 +498,12 @@ export function TopologyCanvas({
       ctx.restore()
     }
 
-    // Draw nodes
-    for (const node of localNodes) {
+    // Draw nodes - only revealed ones if sequential reveal is active
+    const nodesToDraw = revealedNodeIds.size > 0 
+      ? localNodes.filter(n => visibleNodeIds.has(n.id))
+      : localNodes
+    
+    for (const node of nodesToDraw) {
       const isSelected = node.id === selectedNodeId
       const color = getNodeColor(node)
       const nodeSize = 20
